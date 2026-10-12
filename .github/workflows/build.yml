@@ -87,7 +87,13 @@ jobs:
             /opt/ghc \
             /usr/local/.ghcup \
             /opt/hostedtoolcache/CodeQL \
-            /usr/local/share/boost || true
+            /usr/local/share/boost \
+            /usr/share/swift \
+            /usr/local/share/powershell \
+            /usr/local/lib/node_modules \
+            /usr/local/graalvm \
+            /usr/share/rust \
+            /usr/share/php* || true
           sudo docker image prune -a -f >/dev/null 2>&1 || true
           # Optional host runtimes unrelated to Linux Android 11 builds.
           # Do not remove /usr/bin, Python, Git, Java, Ninja, nginx or Node used by Actions.
