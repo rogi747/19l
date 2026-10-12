@@ -283,7 +283,7 @@ jobs:
             --depth=1 \
             --git-lfs \
             -u https://github.com/LineageOS/android.git \
-            -b lineage-18.1
+            -b lineage-19.1
 
           mkdir -p .repo/local_manifests
 
@@ -642,13 +642,13 @@ jobs:
           MATCHES="$(
             grep -R -l \
               --include='AndroidProducts.mk' \
-              'lineage_star2lte' \
+              'lineage_starlte' \
               device vendor 2>/dev/null | head -20 || true
           )"
 
           if [ -z "$MATCHES" ]; then
-            echo "::error::Could not find lineage_star2lte in any AndroidProducts.mk."
-            echo "The local manifest did not sync/register the star2lte product correctly."
+            echo "::error::Could not find lineage_starlte in any AndroidProducts.mk."
+            echo "The local manifest did not sync/register the starlte product correctly."
             find device vendor -maxdepth 4 -name AndroidProducts.mk -print 2>/dev/null | head -100 || true
             exit 1
           fi
@@ -857,14 +857,14 @@ jobs:
 
           mkdir -p /tmp/rbe-test
 
-          # LineageOS 18.1 / Android 11 uses PRODUCT-VARIANT format.
+          # LineageOS 19.1 / Android 12 uses PRODUCT-VARIANT format.
           # TARGET_RELEASE and aosp_target_release are for newer build trees.
           if [ ! -f build/envsetup.sh ]; then
             echo "::error::Missing build/envsetup.sh; check repo sync and working-directory."
             exit 1
           fi
           source build/envsetup.sh
-          lunch lineage_star2lte-userdebug
+          lunch lineage_starlte-userdebug
 
           # Use the checked-out JDK 11 for Android 11 host Java build stages.
           # RBE and Android Soong toolchain remain otherwise unchanged.
@@ -886,7 +886,7 @@ jobs:
           echo "TARGET_BUILD_TYPE=${TARGET_BUILD_TYPE:-unset}"
 
           if [ -z "${ANDROID_BUILD_TOP:-}" ] || \
-             [ "${TARGET_PRODUCT:-}" != "lineage_star2lte" ] || \
+             [ "${TARGET_PRODUCT:-}" != "lineage_starlte" ] || \
              [ "${TARGET_BUILD_VARIANT:-}" != "userdebug" ]; then
             echo "::error::Invalid LineageOS build configuration."
             exit 1
@@ -1084,7 +1084,7 @@ jobs:
             }
             trap benchmark_cleanup EXIT
             {
-              echo 'LineageOS 18.1 storage benchmarks (diagnostic only)'
+              echo 'LineageOS 19.1 storage benchmarks (diagnostic only)'
               echo "RUN_MODE=$RUN_MODE"
               echo '=== BASELINE DISK ==='
               df -hT / "$PWD/out"
@@ -1349,7 +1349,7 @@ jobs:
           fi
 
           # A successful Ninja exit alone is not enough: verify flashable ZIP.
-          ROM_DIR="$ANDROID_BUILD_TOP/out/target/product/star2lte"
+          ROM_DIR="$ANDROID_BUILD_TOP/out/target/product/starlte"
           echo "=== ROM OUTPUT DIRECTORY ==="
           ls -lah "$ROM_DIR" | tail -n 45
           mapfile -d '' -t ROM_ZIPS < <(find "$ROM_DIR" -maxdepth 1 -type f -name 'lineage-*.zip' -print0)
@@ -1376,8 +1376,8 @@ jobs:
         if: ${{ success() && inputs.run_mode == 'full_rom' }}
         uses: actions/upload-artifact@v4
         with:
-          name: lineage-18.1-star2lte-${{ github.run_id }}
-          path: /home/runner/work/los/out/target/product/star2lte/lineage-*.zip
+          name: lineage-19.1-starlte-${{ github.run_id }}
+          path: /home/runner/work/los/out/target/product/starlte/lineage-*.zip
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
@@ -1390,7 +1390,7 @@ jobs:
           mkdir -p /tmp/rbe-test
           FILE=/tmp/rbe-test/resource-samples.tsv
           {
-            echo '## LineageOS 18.1 RBE / storage experimental trial — disk and RAM'
+            echo '## LineageOS 19.1 RBE / storage experimental trial — disk and RAM'
             echo "Mode: ${RUN_MODE}, output storage: ${OUT_STORAGE}"
             echo ''
             echo '| Stage (UTC) | Free GiB | Used GiB | RAM available GiB |'
@@ -1605,7 +1605,7 @@ jobs:
           echo "=== BUILD STOP REASONS ==="
           cat /tmp/rbe-test/*-stop-triggered.txt 2>/dev/null || true
           echo "=== ROM ZIP FILES IF PRESENT ==="
-          find /home/runner/work/los/out/target/product/star2lte -maxdepth 1 \
+          find /home/runner/work/los/out/target/product/starlte -maxdepth 1 \
             -type f -name 'lineage-*.zip' -printf '%p %s bytes\n' 2>/dev/null || true
 
       - name: Stop BuildBuddy gRPC bridge and remove credentials
