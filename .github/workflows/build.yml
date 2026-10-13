@@ -599,43 +599,6 @@ jobs:
             | tee /tmp/rbe-test/renderscript-clang-version.log
           echo 'RenderScript Clang preflight passed.'
 
-      # Android 11 Clang 11 prebuilts contain cfi_blacklist.txt, but the
-      # reclient 0.57 C++ input scanner asks for cfi_ignorelist.txt when CFI
-      # is enabled. Provide a byte-for-byte alias; DO NOT disable CFI.
-      - name: Prepare Clang 11 CFI ignorelist compatibility
-        working-directory: /home/runner/work/los
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p /tmp/rbe-test
-
-          SHARE="prebuilts/clang/host/linux-x86/clang-r383902b1/lib64/clang/11.0.2/share"
-          SOURCE="$SHARE/cfi_blacklist.txt"
-          TARGET="$SHARE/cfi_ignorelist.txt"
-
-          if [ ! -s "$SOURCE" ]; then
-            echo "::error::Expected Android 11 Clang CFI blacklist missing: $SOURCE"
-            exit 1
-          fi
-
-          if [ -e "$TARGET" ] && ! cmp -s "$SOURCE" "$TARGET"; then
-            echo "::error::CFI ignorelist already exists with different contents: $TARGET"
-            exit 1
-          fi
-
-          if [ ! -e "$TARGET" ]; then
-            cp -- "$SOURCE" "$TARGET"
-          fi
-
-          test -s "$TARGET"
-          cmp -s "$SOURCE" "$TARGET"
-          {
-            echo '=== CLANG 11 CFI COMPATIBILITY ==='
-            echo "Source: $SOURCE"
-            echo "Target: $TARGET"
-            sha256sum "$SOURCE" "$TARGET"
-            ls -l "$SOURCE" "$TARGET"
-          } | tee /tmp/rbe-test/clang-cfi-compat.log
 
       - name: Verify star2lte product registration
         working-directory: /home/runner/work/los
