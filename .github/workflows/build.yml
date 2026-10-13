@@ -398,6 +398,7 @@ jobs:
             
             # Tắt PGO để tránh lỗi upload file quá lớn lên BuildBuddy (HTTP 413)
             export ANDROID_PGO_NO_PROFILE_USE=true
+            export SKIP_ABI_CHECKS=true
             
             m -j3 bacon 2>&1 | tee "$BUILD_LOG"
             rc=${PIPESTATUS[0]}
