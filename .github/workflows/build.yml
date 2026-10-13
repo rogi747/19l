@@ -380,7 +380,6 @@ jobs:
           (
             while true; do
               # Xóa thư mục symbols để tiết kiệm đĩa
-              rm -rf /home/runner/work/los/out/target/product/starlte/symbols/* 2>/dev/null || true
               # Xóa các file log reproxy rác để chống phình đĩa
               rm -f /tmp/rbe-test/*.rrpl /tmp/rbe-test/*.INFO* 2>/dev/null || true
               sleep 60
