@@ -39,7 +39,7 @@ jobs:
 
       USE_RBE: "1"
       RBE_DIR: "prebuilts/remoteexecution-client/live"
-      RBE_CXX_EXEC_STRATEGY: "remote"
+      RBE_CXX_EXEC_STRATEGY: "remote_local_fallback"
 
       RBE_service: "127.0.0.1:19099"
       RBE_service_no_security: "true"
