@@ -5,8 +5,6 @@
     <remove-project name="platform/prebuilts/android-emulator" optional="true" />
     <remove-project name="platform/prebuilts/bazel/darwin-x86_64" optional="true" />
     <remove-project name="platform/prebuilts/go/darwin-x86" optional="true" />
-    <remove-project path="prebuilts/clang/host/windows-x86" optional="true" />
-    <remove-project path="prebuilts/gcc/linux-x86/host/x86_64-w64-mingw32-4.8" optional="true" />
     <remove-project path="prebuilts/fuchsia_sdk" optional="true" />
     <remove-project path="external/chromium-webview/prebuilt/x86" optional="true" />
     <remove-project path="external/chromium-webview/prebuilt/x86_64" optional="true" />
