@@ -25,7 +25,6 @@
 <remove-project name="kernel/prebuilts/common-modules/virtual-device/4.19/x86-64" optional="true" />
 <remove-project name="kernel/prebuilts/common-modules/virtual-device/5.4/arm64" optional="true" />
 <remove-project name="kernel/prebuilts/common-modules/virtual-device/5.4/x86-64" optional="true" />
-<remove-project name="kernel/prebuilts/common-modules/virtual-device/5.10/arm64" optional="true" />
 <remove-project name="kernel/prebuilts/common-modules/virtual-device/5.10/x86-64" optional="true" />
 <remove-project name="kernel/prebuilts/common-modules/virtual-device/5.15/arm64" optional="true" />
 <remove-project name="kernel/prebuilts/common-modules/virtual-device/5.15/x86-64" optional="true" />
