@@ -37,7 +37,6 @@ jobs:
       RUN_MODE: "${{ inputs.run_mode }}"
       OUT_STORAGE: "${{ inputs.out_storage }}"
 
-      # Android / Soong RBE
       USE_RBE: "1"
       RBE_DIR: "prebuilts/remoteexecution-client/live"
       RBE_CXX_EXEC_STRATEGY: "remote"
@@ -48,19 +47,16 @@ jobs:
       RBE_use_application_default_credentials: "false"
       RBE_use_rpc_credentials: "false"
 
-      # Keep all RBE diagnostics in one place.
+      # Cắt giảm Log RBE để tránh tràn đĩa
       RBE_log_dir: "/tmp/rbe-test"
       RBE_log_path: "text:///tmp/rbe-test/reproxy_log.txt"
-      RBE_proxy_log_dir: "/tmp/rbe-test"
-      RBE_output_dir: "/tmp/rbe-test"
+      RBE_proxy_log_dir: ""
       RBE_reproxy_wait_seconds: "30"
-      RBE_v: "2"
+      RBE_v: "0"
 
-      # Proven faster in full-ROM trial; high-memory local jobs remain serialized.
       NINJA_REMOTE_NUM_JOBS: "16"
       NINJA_HIGHMEM_NUM_JOBS: "1"
 
-      # GiB of available disk space (statvfs/df -B1, not rounded df -h).
       DISK_WARN_GIB: "15"
       DISK_STOP_GIB: "7"
       BTRFS_WORKSPACE_IMAGE_GIB: "220"
@@ -104,8 +100,6 @@ jobs:
           df -h /
           echo "=== MEMORY ==="
           free -h
-          echo "=== SWAP ==="
-          swapon --show
           echo "=== CPU ==="
           nproc
 
@@ -153,12 +147,6 @@ jobs:
 
           curl -fLSs --retry 4 --retry-delay 2 "$BASE/libtinfo5_${VERSION}_amd64.deb" -o "libtinfo5_${VERSION}_amd64.deb"
           curl -fLSs --retry 4 --retry-delay 2 "$BASE/libncurses5_${VERSION}_amd64.deb" -o "libncurses5_${VERSION}_amd64.deb"
-
-          cat > SHA256SUMS <<EOF
-          4df4288404108f1a156d014e8764a064e977e34e6d44931ab60451694c03c90d  libtinfo5_${VERSION}_amd64.deb
-          58da01991712c6856af0658dc5e9cb533c1a6854ab950055ade185e35bc9c276  libncurses5_${VERSION}_amd64.deb
-          EOF
-          sha256sum -c SHA256SUMS | tee /tmp/rbe-test/legacy-ncurses-checksums.log
 
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "./libtinfo5_${VERSION}_amd64.deb" "./libncurses5_${VERSION}_amd64.deb"
           sudo ldconfig
@@ -226,49 +214,6 @@ jobs:
             git -C "$DIR" lfs pull --include='webview.apk' --exclude=''
             git -C "$DIR" lfs checkout webview.apk
           fi
-
-      - name: Verify and measure compressed workspace after repo sync
-        working-directory: /home/runner/work/los
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ "$RUN_MODE" = full_rom ] && [ "$OUT_STORAGE" = btrfs_zstd ]; then
-            BACKING=/tmp/lineage-workspace-btrfs.img
-            root_avail="$(df -B1 --output=avail / | tail -n1 | tr -d ' ')"
-            inner_avail="$(df -B1 --output=avail "$PWD" | tail -n1 | tr -d ' ')"
-            root_used="$(df -B1 --output=used / | tail -n1 | tr -d ' ')"
-            inner_used="$(df -B1 --output=used "$PWD" | tail -n1 | tr -d ' ')"
-            read -r allocated_blocks fs_block_bytes < <(stat -c '%b %B' "$BACKING")
-            backing_alloc=$((allocated_blocks * fs_block_bytes))
-            backing_size="$(stat -c %s "$BACKING")"
-            printf '%s\tpost-repo-sync\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-              "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$root_avail" "$root_used" \
-              "$inner_avail" "$inner_used" "$backing_alloc" "$backing_size" \
-              >> /tmp/rbe-test/btrfs-storage-samples.tsv
-          fi
-
-      - name: Profile storage after repo sync
-        if: success()
-        working-directory: /home/runner/work/los
-        timeout-minutes: 20
-        shell: bash
-        run: |
-          set -uo pipefail
-          mkdir -p /tmp/rbe-test
-          TS=/tmp/rbe-test/resource-samples.tsv
-          [ ! -s "$TS" ] && printf 'timestamp\tstage\tdisk_available_bytes\tdisk_used_bytes\tmem_available_kib\n' > "$TS"
-          printf '%s\t%s\t%s\t%s\t%s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "post-sync" \
-            "$(df -B1 --output=avail / | tail -n 1 | tr -d ' ')" \
-            "$(df -B1 --output=used / | tail -n 1 | tr -d ' ')" \
-            "$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)" >> "$TS"
-
-      - name: Preflight RenderScript Clang shared libraries
-        working-directory: /home/runner/work/los
-        shell: bash
-        run: |
-          set -euo pipefail
-          CLANG='prebuilts/clang/host/linux-x86/clang-3289846/bin/clang.real'
-          if [ -x "$CLANG" ]; then ldd "$CLANG"; fi
 
       - name: Verify star2lte product registration
         working-directory: /home/runner/work/los
@@ -342,6 +287,21 @@ jobs:
           set -eo pipefail
           mkdir -p /tmp/rbe-test
 
+          # Hàm In thông tin tài nguyên hệ thống
+          log_resources() {
+            echo "========================================================"
+            echo " TÀI NGUYÊN HỆ THỐNG: $1 ($(date -u +'%H:%M:%S UTC'))"
+            echo "========================================================"
+            echo "[DISK]"
+            df -h / /home/runner/work/los 2>/dev/null || true
+            echo "[RAM & SWAP]"
+            free -h || true
+            swapon --show || true
+            echo "========================================================"
+          }
+
+          log_resources "Khởi tạo môi trường (Envsetup & Lunch)"
+
           source build/envsetup.sh
           lunch lineage_starlte-userdebug
 
@@ -362,24 +322,34 @@ jobs:
             local available="$(disk_sample "$1")"
             if (( available < DISK_STOP_GIB * 1024 * 1024 * 1024 )); then exit 1; fi
           }
-          enforce_initial_disk_guard pre-graph
 
+          # Bổ sung prebuilt kernel bị thiếu cho microdroid
+          if [ ! -d "kernel/prebuilts/common-modules/virtual-device/5.10/arm64" ]; then
+            echo "=== CLONING MISSING MICRODROID PREBUILTS ==="
+            git clone https://android.googlesource.com/kernel/prebuilts/common-modules/virtual-device/5.10/arm64 \
+              kernel/prebuilts/common-modules/virtual-device/5.10/arm64 --depth=1
+          fi
+
+          # Sửa lỗi RBE scandeps do thiếu tệp CFI của Clang 12
           echo "=== FIX RBE CLANG SCAN BUG ==="
           MISSING_CFI_DIR="prebuilts/clang/host/linux-x86/clang-r416183b1/lib64/clang/12.0.7/share"
           mkdir -p "$MISSING_CFI_DIR"
           touch "$MISSING_CFI_DIR/cfi_ignorelist.txt"
-          echo "Đã tạo tệp cfi_ignorelist.txt rỗng để bypass RBE."
+
+          enforce_initial_disk_guard pre-graph
+          log_resources "Trước khi tạo đồ thị Soong (build-graph)"
 
           echo "=== GENERATE BUILD GRAPH ==="
           m nothing 2>&1 | tee /tmp/rbe-test/m-nothing.log
           enforce_initial_disk_guard post-graph
+          
+          log_resources "Sau khi Soong hoàn tất"
 
           BUILD_NINJA="$(find "$ANDROID_BUILD_TOP/out" -maxdepth 1 -name 'combined*.ninja' | head -1)"
           echo "BUILD_NINJA=$BUILD_NINJA" > /tmp/rbe-test/build-ninja.txt
 
           echo "=== XÓA THƯ MỤC .repo ĐỂ GIẢI PHÓNG ĐĨA CHO PHA ĐÓNG GÓI 99% ==="
-          
-          # 1. Giả mạo công cụ repo để bypass lỗi tạo build-manifest.xml của LineageOS
+          # Giả mạo công cụ repo để bypass lỗi tạo build-manifest.xml
           rm -f /home/runner/work/los/.repo/repo/repo || true
           cat << 'EOF' > /home/runner/work/los/.repo/repo/repo
           #!/usr/bin/env python3
@@ -387,10 +357,11 @@ jobs:
           EOF
           chmod +x /home/runner/work/los/.repo/repo/repo
 
-          # 2. Xóa các thư mục cục bộ ngốn đĩa
           rm -rf /home/runner/work/los/.repo/project-objects || true
           rm -rf /home/runner/work/los/.repo/projects || true
           rm -rf /home/runner/work/los/.repo/manifests || true
+
+          log_resources "Sau khi dọn dẹp .repo (Chuẩn bị Build ROM)"
 
           BUILD_LOG=/tmp/rbe-test/full-rom-build.log
           BUILD_STATUS_FILE=/tmp/rbe-test/build-exit-code.txt
@@ -405,10 +376,13 @@ jobs:
           fi
           SOFT_DEADLINE_EPOCH=$(( JOB_START_EPOCH + FULL_ROM_SOFT_DEADLINE_MINUTES * 60 ))
 
-          # Tiến trình dọn dẹp thư mục symbols chạy ngầm để tiết kiệm 5-10GB đĩa
+          # Tiến trình dọn dẹp chạy ngầm
           (
             while true; do
+              # Xóa thư mục symbols để tiết kiệm đĩa
               rm -rf /home/runner/work/los/out/target/product/starlte/symbols/* 2>/dev/null || true
+              # Xóa các file log reproxy rác để chống phình đĩa
+              rm -f /tmp/rbe-test/*.rrpl /tmp/rbe-test/*.INFO* 2>/dev/null || true
               sleep 60
             done
           ) &
@@ -421,6 +395,9 @@ jobs:
             # Tắt Unit Tests ngốn RAM và ép GC dọn rác bộ nhớ
             export SKIP_SOONG_TESTS=true
             export GOGC=45
+            
+            # Tắt PGO để tránh lỗi upload file quá lớn lên BuildBuddy (HTTP 413)
+            export ANDROID_PGO_NO_PROFILE_USE=true
             
             m -j3 bacon 2>&1 | tee "$BUILD_LOG"
             rc=${PIPESTATUS[0]}
@@ -472,6 +449,8 @@ jobs:
           if [ -s "$DISK_TRIP_FILE" ]; then BUILD_RC=70; fi
           if [ -s "$TIME_TRIP_FILE" ]; then BUILD_RC=71; fi
 
+          log_resources "Hoàn tất Build ROM (Exit: $BUILD_RC)"
+
           if [ "$BUILD_RC" -ne 0 ]; then
             tail -n 120 "$BUILD_LOG" || true
             exit "$BUILD_RC"
@@ -491,15 +470,6 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
-
-      - name: RBE diagnostics
-        if: always()
-        working-directory: /home/runner/work/los
-        shell: bash
-        run: |
-          set +e
-          mkdir -p /tmp/rbe-test
-          tail -n 260 /tmp/rbe-test/full-rom-build.log 2>/dev/null || true
 
       - name: Stop BuildBuddy gRPC bridge and remove credentials
         if: always()
