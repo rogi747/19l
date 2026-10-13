@@ -364,6 +364,12 @@ jobs:
           }
           enforce_initial_disk_guard pre-graph
 
+          echo "=== FIX RBE CLANG SCAN BUG ==="
+          MISSING_CFI_DIR="prebuilts/clang/host/linux-x86/clang-r416183b1/lib64/clang/12.0.7/share"
+          mkdir -p "$MISSING_CFI_DIR"
+          touch "$MISSING_CFI_DIR/cfi_ignorelist.txt"
+          echo "Đã tạo tệp cfi_ignorelist.txt rỗng để bypass RBE."
+
           echo "=== GENERATE BUILD GRAPH ==="
           m nothing 2>&1 | tee /tmp/rbe-test/m-nothing.log
           enforce_initial_disk_guard post-graph
