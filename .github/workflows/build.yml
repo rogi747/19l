@@ -378,6 +378,16 @@ jobs:
           echo "BUILD_NINJA=$BUILD_NINJA" > /tmp/rbe-test/build-ninja.txt
 
           echo "=== XÓA THƯ MỤC .repo ĐỂ GIẢI PHÓNG ĐĨA CHO PHA ĐÓNG GÓI 99% ==="
+          
+          # 1. Giả mạo công cụ repo để bypass lỗi tạo build-manifest.xml của LineageOS
+          rm -f /home/runner/work/los/.repo/repo/repo || true
+          cat << 'EOF' > /home/runner/work/los/.repo/repo/repo
+          #!/usr/bin/env python3
+          print('<?xml version="1.0" encoding="UTF-8"?><manifest></manifest>')
+          EOF
+          chmod +x /home/runner/work/los/.repo/repo/repo
+
+          # 2. Xóa các thư mục cục bộ ngốn đĩa
           rm -rf /home/runner/work/los/.repo/project-objects || true
           rm -rf /home/runner/work/los/.repo/projects || true
           rm -rf /home/runner/work/los/.repo/manifests || true
